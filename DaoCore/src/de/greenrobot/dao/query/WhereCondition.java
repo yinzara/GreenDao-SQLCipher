@@ -29,6 +29,8 @@ public interface WhereCondition {
 
     void appendTo(StringBuilder builder, String tableAlias);
 
+    void appendTo(StringBuilder builder);
+
     void appendValuesTo(List<Object> values);
 
     public abstract static class AbstractCondition implements WhereCondition {
@@ -135,6 +137,11 @@ public interface WhereCondition {
         }
 
         @Override
+        public void appendTo(StringBuilder builder) {
+            appendTo(builder, null);
+        }
+
+        @Override
         public void appendTo(StringBuilder builder, String tableAlias) {
             if (tableAlias != null) {
                 builder.append(tableAlias).append('.');
@@ -164,6 +171,10 @@ public interface WhereCondition {
         @Override
         public void appendTo(StringBuilder builder, String tableAlias) {
             builder.append(string);
+        }
+
+        public void appendTo(StringBuilder builder) {
+            appendTo(builder, null);
         }
 
     }

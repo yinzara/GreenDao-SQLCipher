@@ -27,14 +27,14 @@ import de.greenrobot.dao.query.WhereCondition.PropertyCondition;
  * 
  * @author Markus
  */
-public class Property {
+public class Property<ValueType> {
     public final int ordinal;
-    public final Class<?> type;
+    public final Class<ValueType> type;
     public final String name;
     public final boolean primaryKey;
     public final String columnName;
 
-    public Property(int ordinal, Class<?> type, String name, boolean primaryKey, String columnName) {
+    public Property(int ordinal, Class<ValueType> type, String name, boolean primaryKey, String columnName) {
         this.ordinal = ordinal;
         this.type = type;
         this.name = name;

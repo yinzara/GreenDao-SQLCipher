@@ -29,6 +29,7 @@ public class ToMany {
     private Property[] sourceProperties;
     private final Property[] targetProperties;
     private final PropertyOrderList propertyOrderList;
+    private boolean parceled;
 
     public ToMany(Schema schema, Entity sourceEntity, Property[] sourceProperties, Entity targetEntity,
             Property[] targetProperties) {
@@ -70,6 +71,14 @@ public class ToMany {
      */
     public void setName(String name) {
         this.name = name;
+    }
+
+    public boolean isParceled() {
+        return parceled;
+    }
+
+    public void enableParceled() {
+        this.parceled = true;
     }
 
     /** Property of target entity used for ascending order. */

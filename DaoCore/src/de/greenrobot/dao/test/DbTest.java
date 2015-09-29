@@ -95,7 +95,7 @@ public abstract class DbTest extends AndroidTestCase {
     protected SQLiteDatabase createDatabase() {
         if (inMemory) {
 //            return SQLiteDatabase.create(null);
-        	return SQLiteDatabase.create(null, null);
+        	return SQLiteDatabase.create(null, (String)null);
         } else {
             getContext().deleteDatabase(DB_NAME);
 //            return getContext().openOrCreateDatabase(DB_NAME, 0, null);

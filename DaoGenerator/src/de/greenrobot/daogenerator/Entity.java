@@ -63,10 +63,13 @@ public class Entity {
     private boolean protobuf;
     private boolean constructors;
     private boolean skipGeneration;
+    private boolean skipGenerationEvent;
     private boolean skipGenerationTest;
     private boolean skipTableCreation;
+    private boolean generateListView;
     private Boolean active;
     private Boolean hasKeepSections;
+    private boolean hasId;
 
     Entity(Schema schema, String className) {
         this.schema = schema;
@@ -137,6 +140,7 @@ public class Entity {
 
     /** Adds a standard _id column required by standard Android classes, e.g. list adapters. */
     public PropertyBuilder addIdProperty() {
+        hasId = true;
         PropertyBuilder builder = addLongProperty("id");
         builder.columnName("_id").primaryKey();
         return builder;
@@ -266,6 +270,9 @@ public class Entity {
         return className;
     }
 
+    public String getFieldName() {
+        return Character.toUpperCase(className.charAt(0)) + className.substring(1);
+    }
     public List<Property> getProperties() {
         return properties;
     }
@@ -342,9 +349,21 @@ public class Entity {
         this.constructors = constructors;
     }
 
+    public boolean isGenerateListView() {
+        return generateListView;
+    }
+
+    public void setGenerateListView(boolean generateListView) {
+        this.generateListView = generateListView;
+    }
+
     public boolean isSkipGeneration() {
         return skipGeneration;
     }
+
+    public boolean isSkipGenerationEvent() { return skipGenerationEvent; }
+
+    public void setSkipGenerationEvent(final boolean skipGenerationEvent) { this.skipGenerationEvent = skipGenerationEvent; }
 
     /**
      * Flag if the entity's code generation should be skipped. E.g. if you need to change the class after initial
@@ -423,6 +442,14 @@ public class Entity {
         for (String interfaceToImplement : interfaces) {
             interfacesToImplement.add(interfaceToImplement);
         }
+    }
+
+    public boolean isHasId() {
+        return hasId;
+    }
+
+    public void setHasId(boolean hasId) {
+        this.hasId = hasId;
     }
 
     public void implementsSerializable() {

@@ -73,6 +73,10 @@ abstract class AbstractQuery<T> {
         }
     }
 
+    public String getSql() {
+        return sql;
+    }
+
     protected void checkThread() {
         if (Thread.currentThread() != ownerThread) {
             throw new DaoException(

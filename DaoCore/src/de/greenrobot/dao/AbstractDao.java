@@ -780,7 +780,7 @@ public abstract class AbstractDao<T, K> {
     }
 
     /** Reads the values from the current position of the given cursor and returns a new entity. */
-    abstract protected T readEntity(Cursor cursor, int offset);
+    abstract public T readEntity(Cursor cursor, int offset);
 
     /** Reads the key from the current position of the given cursor, or returns null if there's no single-value key. */
     abstract protected K readKey(Cursor cursor, int offset);

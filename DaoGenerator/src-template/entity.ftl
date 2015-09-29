@@ -19,16 +19,33 @@ along with greenDAO Generator.  If not, see <http://www.gnu.org/licenses/>.
 -->
 <#assign toBindType = {"Boolean":"Long", "Byte":"Long", "Short":"Long", "Int":"Long", "Long":"Long", "Float":"Double", "Double":"Double", "String":"String", "ByteArray":"Blob" }/>
 <#assign toCursorType = {"Boolean":"Short", "Byte":"Short", "Short":"Short", "Int":"Int", "Long":"Long", "Float":"Float", "Double":"Double", "String":"String", "ByteArray":"Blob" }/>
+<#assign toParcelType = {"Boolean":"Int", "Byte":"Int", "Short":"Int", "Int":"Int", "Long":"Long", "Float":"Float", "Double":"Double", "String":"String", "ByteArray":"ByteArray" }/>
 <#assign complexTypes = ["String", "ByteArray", "Date"]/>
 package ${entity.javaPackage};
 
 <#if entity.toManyRelations?has_content>
 import java.util.List;
 </#if>
+<#list entity.toManyRelations as toMany>
+    <#if toMany.parceled>
+import java.util.ArrayList;
+import java.util.Arrays;
+        <#break>
+    </#if>
+</#list>
 <#if entity.active>
 import ${schema.defaultJavaPackageDao}.DaoSession;
+import de.greenrobot.dao.AbstractDao;
 import de.greenrobot.dao.DaoException;
+<#if entity.hasId>
+import de.greenrobot.dao.HasId;
+</#if>
 
+</#if>
+<#if schema.parcelableGenerated>
+
+import android.os.Parcel;
+import android.os.Parcelable;
 </#if>
 <#if entity.additionalImportsEntity?has_content>
 <#list entity.additionalImportsEntity as additionalImport>
@@ -49,8 +66,8 @@ import ${additionalImport};
  */
 public class ${entity.className}<#if
 entity.superclass?has_content> extends ${entity.superclass} </#if><#if
-entity.interfacesToImplement?has_content> implements <#list entity.interfacesToImplement
-as ifc>${ifc}<#if ifc_has_next>, </#if></#list></#if> {
+entity.interfacesToImplement?has_content> implements <#if entity.hasId>HasId, </#if><#if schema.parcelableGenerated>Parcelable, </#if><#list entity.interfacesToImplement
+as ifc>${ifc}<#if ifc_has_next>, </#if></#list><#else><#if schema.parcelableGenerated && !entity.hasId> implements Parcelable</#if><#if entity.hasId> implements <#if schema.parcelableGenerated>Parcelable, </#if>HasId</#if></#if> {
 
 <#list entity.properties as property>
 <#if property.notNull && complexTypes?seq_contains(property.propertyType)>
@@ -118,7 +135,7 @@ property>${property.javaType} ${property.propertyName}<#if property_has_next>, <
 <#if property.notNull && complexTypes?seq_contains(property.propertyType)>
     /** Not-null value. */
 </#if>
-    public ${property.javaType} get${property.propertyName?cap_first}() {
+    public ${property.javaType} <#if property.propertyType == "Boolean">is<#else>get</#if>${property.propertyName?cap_first}() {
         return ${property.propertyName};
     }
 
@@ -252,7 +269,181 @@ property>${property.javaType} ${property.propertyName}<#if property_has_next>, <
     }
 
 </#if>
+<#if schema.parcelableGenerated>
+<#--
+##########################################
+########Parcelable interface #############
+##########################################
+-->
+    @Override
+    public void writeToParcel(Parcel _dst, int _flgs) {
+        //Properties
+<#list entity.properties as property>
+    <#if property.parceled>
+    <#if (!property.notNull && property.propertyType != "String")>
+        <#if property.propertyType == "Boolean">
+        _dst.writeInt(${property.propertyName} == null?0:(${property.propertyName}?1:-1));
+        <#elseif property.propertyType == "Byte">
+        _dst.writeInt(${property.propertyName} != null?(0xFFFF0000 | (${property.propertyName} & 0xFF)):0);
+        <#elseif property.propertyType == "Short">
+        _dst.writeInt(${property.propertyName} != null?(0xFFFF0000 | (${property.propertyName} & 0xFFFF)):0);
+        <#else>
+        if (${property.propertyName} != null) {
+            _dst.writeInt(1);
+            <#if property.propertyType == "Date">
+            _dst.writeLong(${property.propertyName}.getTime());
+            <#else>
+            _dst.write${toParcelType[property.propertyType]}(${property.propertyName});
+            </#if>
+        } else {
+            _dst.writeInt(0);
+        }
+        </#if>
+    <#else>
+        <#if property.propertyType == "Boolean">
+        _dst.writeInt(${property.propertyName}?1:-1);
+        <#elseif property.propertyType == "Date">
+        _dst.writeLong(${property.propertyName}.getTime());
+        <#elseif property.propertyType == "Byte">
+        _dst.writeInt((0xFFFF0000 | (${property.propertyName} & 0x000000FF)));
+        <#elseif property.propertyType == "Short">
+        _dst.writeInt((0xFFFF0000 | (${property.propertyName} & 0x0000FFFF));
+        <#else>
+        _dst.write${toParcelType[property.propertyType]}(${property.propertyName});
+        </#if>
+    </#if>
+    </#if>
+</#list>
+<#assign IsFirst = true/>
+<#list entity.toOneRelations as toOne>
+    <#if toOne.parceled>
+        <#if IsFirst>
+
+        //ToOne relations
+        <#assign IsFirst = false/>
+        </#if>
+        _dst.writeParcelable(${toOne.name}, 0);
+        <#if toOne.useFkProperty>
+        if (${toOne.name} != null) {
+            _dst.writeInt(1);
+            _dst.writeLong(${toOne.name}__resolvedKey);
+        } else {
+            _dst.writeInt(0);
+        }
+        <#else>
+        _dst.writeInt(${toOne.name}__refreshed?1:-1);
+        </#if>
+    </#if>
+</#list>
+<#assign IsFirst = true/>
+<#list entity.toManyRelations as toMany>
+    <#if toMany.parceled>
+        <#if IsFirst>
+
+        //ToMany relations
+        <#assign IsFirst = false/>
+        </#if>
+        _dst.writeParcelableArray(${toMany.name}.toArray(new ${toMany.targetEntity.className}[${toMany.name}.size()]), 0);
+    </#if>
+</#list>
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+<#if entity.toManyRelations?has_content>
+    @SuppressWarnings({"rawtypes","unchecked"})
+</#if>
+    public static final Parcelable.Creator<${entity.className}> CREATOR = new Parcelable.Creator<${entity.className}>() {
+        @Override
+        public ${entity.className} createFromParcel(Parcel source) {
+            final ${entity.className} entity = new ${entity.className}();
+            //Properties
+<#list entity.properties as property>
+    <#if property.parceled>
+    <#if ((!complexTypes?seq_contains(property.propertyType) || property.propertyType == "ByteArray" || property.propertyType == "Date") && !property.notNull)>
+        <#if property.propertyType == "Boolean">
+            final int ${property.propertyName}AsInt = source.readInt();
+            entity.${property.propertyName} = ${property.propertyName}AsInt > 0?Boolean.TRUE:(${property.propertyName}AsInt < 0?Boolean.FALSE:null);
+        <#elseif property.propertyType == "Byte">
+            final int ${property.propertyName}AsInt = source.readInt();
+            entity.${property.propertyName} = (${property.propertyName}AsInt & 0xFFFF0000) != 0?(byte)(${property.propertyName}AsInt & 0x000000FF):null;
+        <#elseif property.propertyType == "Short">
+            final int ${property.propertyName}AsInt = source.readInt();
+            entity.${property.propertyName} = (${property.propertyName}AsInt & 0xFFFF0000) != 0?(short)(${property.propertyName}AsInt & 0x0000FFFF):null;
+        <#else>
+            if (source.readInt() == 1) {
+                <#if property.propertyType == "Date">
+                entity.${property.propertyName} = new java.util.Date(source.readLong());
+                <#elseif property.propertyType = "ByteArray">
+                entity.${property.propertyName} = source.createByteArray();
+                <#else>
+                entity.${property.propertyName} = (${property.javaType})source.read${toParcelType[property.propertyType]}();
+                </#if>
+            }
+        </#if>
+    <#else>
+        <#if property.propertyType == "Boolean">
+            entity.${property.propertyName} = source.readInt() > 0;
+        <#elseif property.propertyType == "Date">
+            entity.${property.propertyName} = new java.util.Date(source.readLong());
+        <#elseif property.propertyType = "ByteArray">
+            entity.${property.propertyName} = source.createByteArray();
+        <#elseif property.propertyType == "Byte">
+            entity.${property.propertyName} = (byte)(source.readInt() & 0x000000FF);
+        <#elseif property.propertyType == "Short">
+            entity.${property.propertyName} = (short)(source.readInt() & 0x0000FFFF);
+        <#else>
+            entity.${property.propertyName} = source.read${toParcelType[property.propertyType]}();
+        </#if>
+    </#if>
+    </#if>
+</#list>
+
+<#assign IsFirst = true/>
+<#list entity.toOneRelations as toOne>
+    <#if toOne.parceled>
+        <#if IsFirst>
+
+            //ToOne relations
+            <#assign IsFirst = false/>
+        </#if>
+            entity.${toOne.name} = source.readParcelable(${toOne.targetEntity.className}.class.getClassLoader());
+        <#if toOne.useFkProperty>
+            if (source.readInt() > 0) {
+                entity.${toOne.name}__resolvedKey = source.readLong();
+            }
+        <#else>
+            entity.${toOne.name}__refreshed = source.readInt() > 0;
+        </#if>
+    </#if>
+</#list>
+<#assign IsFirst = true/>
+<#list entity.toManyRelations as toMany>
+    <#if toMany.parceled>
+        <#if IsFirst>
+
+            //ToMany relations
+            <#assign IsFirst = false/>
+        </#if>
+            entity.${toMany.name} = new ArrayList<${toMany.targetEntity.className}>((List)Arrays.asList(source.readParcelableArray(${toMany.targetEntity.className}.class.getClassLoader())));
+    </#if>
+</#list>
+
+            return entity;
+        }
+
+        @Override
+        public ${entity.className}[] newArray(int size) {
+            return new ${entity.className}[size];
+        }
+    };
+</#if>
 <#if entity.hasKeepSections>
+
+
     // KEEP METHODS - put your custom methods here
 ${keepMethods!}    // KEEP METHODS END
 

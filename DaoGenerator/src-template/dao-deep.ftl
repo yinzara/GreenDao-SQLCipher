@@ -89,19 +89,25 @@ along with greenDAO Generator.  If not, see <http://www.gnu.org/licenses/>.
     }
     
     /** Reads all available rows from the given cursor and returns a list of new ImageTO objects. */
-    public List<${entity.className}> loadAllDeepFromCursor(Cursor cursor) {
+    public List<${entity.className}> loadAllDeepFromCursor(Cursor cursor, int offset, int maxResults) {
         int count = cursor.getCount();
+
+        if (count < offset) {
+            return new ArrayList<${entity.className}>(0);
+        }
+        count = count > maxResults?maxResults:count;
         List<${entity.className}> list = new ArrayList<${entity.className}>(count);
         
-        if (cursor.moveToFirst()) {
+        if (cursor.moveToPosition(0)) {
             if (identityScope != null) {
                 identityScope.lock();
                 identityScope.reserveRoom(count);
             }
             try {
-                do {
+                for (int i = 0; i < count; i++) {
                     list.add(loadCurrentDeep(cursor, false));
-                } while (cursor.moveToNext());
+                    cursor.moveToNext();
+                }
             } finally {
                 if (identityScope != null) {
                     identityScope.unlock();
@@ -110,10 +116,14 @@ along with greenDAO Generator.  If not, see <http://www.gnu.org/licenses/>.
         }
         return list;
     }
-    
+
     protected List<${entity.className}> loadDeepAllAndCloseCursor(Cursor cursor) {
+        return loadDeepAllAndCloseCursor(cursor, 0, Integer.MAX_VALUE);
+    }
+    
+    protected List<${entity.className}> loadDeepAllAndCloseCursor(Cursor cursor, int offset, int maxResult) {
         try {
-            return loadAllDeepFromCursor(cursor);
+            return loadAllDeepFromCursor(cursor, offset, maxResult);
         } finally {
             cursor.close();
         }
@@ -123,7 +133,13 @@ along with greenDAO Generator.  If not, see <http://www.gnu.org/licenses/>.
     /** A raw-style query where you can pass any WHERE clause and arguments. */
     public List<${entity.className}> queryDeep(String where, String... selectionArg) {
         Cursor cursor = db.rawQuery(getSelectDeep() + where, selectionArg);
-        return loadDeepAllAndCloseCursor(cursor);
+        return loadDeepAllAndCloseCursor(cursor, 0, Integer.MAX_VALUE);
     }
+
+    /** A raw-style query where you can pass any WHERE clause and arguments. */
+        public List<${entity.className}> queryDeep(String where, int offset, int maxResults) {
+            Cursor cursor = db.rawQuery(getSelectDeep() + where, null, offset + maxResults, offset + maxResults);
+            return loadDeepAllAndCloseCursor(cursor, offset, maxResults);
+        }
  
 </#if>

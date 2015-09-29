@@ -71,7 +71,7 @@ public class ${entity.classNameDao} extends AbstractDao<${entity.className}, ${e
     */
     public static class Properties {
 <#list entity.propertiesColumns as property>
-        public final static Property ${property.propertyName?cap_first} = new Property(${property_index}, ${property.javaType}.class, "${property.propertyName}", ${property.primaryKey?string}, "${property.columnName}");
+        public final static Property<<#if property.propertyType == "Int">Integer<#elseif property.propertyType == "Date" || property.propertyType == "ByteArray">${property.javaType}<#else>${property.javaType?cap_first}</#if>> ${property.propertyName?cap_first} = new Property<>(${property_index}, ${property.javaType}.class, "${property.propertyName}", ${property.primaryKey?string}, "${property.columnName}");
 </#list>
     };
 
@@ -127,7 +127,7 @@ as property>${property.columnName}<#if property_has_next>,</#if></#list>);");
 <#if property.notNull || entity.protobuf>
 <#if entity.protobuf>
         if(entity.has${property.propertyName?cap_first}()) {
-    </#if>        stmt.bind${toBindType[property.propertyType]}(${property_index + 1}, entity.get${property.propertyName?cap_first}()<#if
+    </#if>        stmt.bind${toBindType[property.propertyType]}(${property_index + 1}, entity.<#if property.propertyType == "Boolean">is<#else>get</#if>${property.propertyName?cap_first}()<#if
      property.propertyType == "Boolean"> ? 1l: 0l</#if><#if property.propertyType == "Date">.getTime()</#if>);
 <#if entity.protobuf>
         }

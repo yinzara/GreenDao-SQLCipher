@@ -41,6 +41,7 @@ public class DaoGenerator {
     private Pattern patternKeepIncludes;
     private Pattern patternKeepFields;
     private Pattern patternKeepMethods;
+    private Pattern patternKeepBody;
 
     private Template templateDao;
     private Template templateDaoMaster;
@@ -48,6 +49,17 @@ public class DaoGenerator {
     private Template templateEntity;
     private Template templateDaoUnitTest;
     private Template templateContentProvider;
+    private Template templateEntityEvent;
+    private Template templateEntityListEvent;
+    private Template templateEntityListViewBase;
+    private Template templateEntityListViewDefault;
+    private Template templateEntityListViewDefaultXml;
+    private Template templateEntityItemView;
+    private Template templateEntityItemViewXml;
+    private Template templateEntityAdapter;
+    private Template templateEntityCursorAdapter;
+    private Template templateGeneratedViewComponent;
+    private Template templateDaoModule;
 
     public DaoGenerator() throws IOException {
         System.out.println("greenDAO Generator");
@@ -57,6 +69,7 @@ public class DaoGenerator {
         patternKeepIncludes = compilePattern("INCLUDES");
         patternKeepFields = compilePattern("FIELDS");
         patternKeepMethods = compilePattern("METHODS");
+        patternKeepBody = compilePattern("BODY");
 
         Configuration config = new Configuration();
         config.setClassForTemplateLoading(this.getClass(), "/");
@@ -68,6 +81,18 @@ public class DaoGenerator {
         templateEntity = config.getTemplate("entity.ftl");
         templateDaoUnitTest = config.getTemplate("dao-unit-test.ftl");
         templateContentProvider = config.getTemplate("content-provider.ftl");
+        templateEntityEvent = config.getTemplate("entity-event.ftl");
+        templateEntityListEvent = config.getTemplate("entity-list-event.ftl");
+
+        templateEntityListViewBase = config.getTemplate("entity-list-view-base.ftl");
+        templateEntityListViewDefault = config.getTemplate("entity-list-view-default.ftl");
+        templateEntityListViewDefaultXml = config.getTemplate("entity-list-view-default-xml.ftl");
+        templateEntityItemView = config.getTemplate("entity-item-view.ftl");
+        templateEntityItemViewXml = config.getTemplate("entity-item-view-xml.ftl");
+        templateEntityAdapter = config.getTemplate("entity-adapter.ftl");
+        templateEntityCursorAdapter = config.getTemplate("entity-cursor-adapter.ftl");
+        templateGeneratedViewComponent = config.getTemplate("entity-view-component.ftl");
+        templateDaoModule = config.getTemplate("dao-module.ftl");
     }
 
     private Pattern compilePattern(String sectionName) {
@@ -75,22 +100,21 @@ public class DaoGenerator {
         return Pattern.compile(".*^\\s*?//\\s*?KEEP " + sectionName + ".*?\n(.*?)^\\s*// KEEP " + sectionName
                 + " END.*?\n", flags);
     }
+//
+//    /** Generates all entities and DAOs for the given schema. */
+//    public void generateAll(Schema schema, String outDir, String outDirTest) throws Exception {
+//        generateAll(schema, outDir, outDirTest);
+//    }
 
     /** Generates all entities and DAOs for the given schema. */
-    public void generateAll(Schema schema, String outDir) throws Exception {
-        generateAll(schema, outDir, null);
-    }
-
-    /** Generates all entities and DAOs for the given schema. */
-    public void generateAll(Schema schema, String outDir, String outDirTest) throws Exception {
+    public void generateAll(Schema schema, String outDir, String outDirRes) throws Exception {
         long start = System.currentTimeMillis();
 
         File outDirFile = toFileForceExists(outDir);
 
         File outDirTestFile = null;
-        if (outDirTest != null) {
-            outDirTestFile = toFileForceExists(outDirTest);
-        }
+
+        File outDirResFile = toFileForceExists(outDirRes);
 
         schema.init2ndPass();
         schema.init3ndPass();
@@ -102,11 +126,26 @@ public class DaoGenerator {
             generate(templateDao, outDirFile, entity.getJavaPackageDao(), entity.getClassNameDao(), schema, entity);
             if (!entity.isProtobuf() && !entity.isSkipGeneration()) {
                 generate(templateEntity, outDirFile, entity.getJavaPackage(), entity.getClassName(), schema, entity);
+                if (schema.isEventGenerated() && !entity.isSkipGenerationEvent()) {
+                    generate(templateEntityEvent, outDirFile, schema.getDefaultJavaPackageEvent(), entity.getClassName() + "Event", schema, entity);
+                    generate(templateEntityListEvent, outDirFile, schema.getDefaultJavaPackageEvent(), entity.getClassName() + "ListEvent", schema, entity);
+
+                    if (entity.isGenerateListView()) {
+                        generate(templateEntityListViewBase, outDirFile, schema.getDefaultJavaPackage() +".view.base", "Base" + entity.getClassName() + "ListView", schema, entity);
+                        generate(templateEntityListViewDefault, outDirFile, schema.getDefaultJavaPackage() +".view", "Default" + entity.getClassName() + "ListView", schema, entity);
+                        generate(templateEntityAdapter, outDirFile, schema.getDefaultJavaPackage() +".view.adapter", entity.getClassName() + "ListAdapter", schema, entity);
+                        generate(templateEntityCursorAdapter, outDirFile, schema.getDefaultJavaPackage() +".view.adapter", entity.getClassName() + "CursorAdapter", schema, entity);
+                        generate(templateEntityItemView, outDirFile, schema.getDefaultJavaPackage() +".view.item", entity.getClassName() + "ListItemView", schema, entity);
+                        generate(templateEntityItemViewXml, outDirResFile, "layout", entity.getTableName().toLowerCase() + "_list_item_view", schema, entity, "xml");
+                        generate(templateEntityListViewDefaultXml, outDirResFile, "layout", entity.getTableName().toLowerCase() + "_list_view_default", schema, entity, "xml");
+                    }
+                }
+
             }
             if (outDirTestFile != null && !entity.isSkipGenerationTest()) {
                 String javaPackageTest = entity.getJavaPackageTest();
                 String classNameTest = entity.getClassNameTest();
-                File javaFilename = toJavaFilename(outDirTestFile, javaPackageTest, classNameTest);
+                File javaFilename = toJavaFilename(outDirTestFile, javaPackageTest, classNameTest, "java");
                 if (!javaFilename.exists()) {
                     generate(templateDaoUnitTest, outDirTestFile, javaPackageTest, classNameTest, schema, entity);
                 } else {
@@ -122,6 +161,8 @@ public class DaoGenerator {
         }
         generate(templateDaoMaster, outDirFile, schema.getDefaultJavaPackageDao(), "DaoMaster", schema, null);
         generate(templateDaoSession, outDirFile, schema.getDefaultJavaPackageDao(), "DaoSession", schema, null);
+        generate(templateGeneratedViewComponent, outDirFile, schema.getDefaultJavaPackage() + ".dagger.component", "EntityViewComponent", schema, null);
+        generate(templateDaoModule, outDirFile, schema.getDefaultJavaPackage() + ".dagger.module", "DaoModule", schema, null);
 
         long time = System.currentTimeMillis() - start;
         System.out.println("Processed " + entities.size() + " entities in " + time + "ms");
@@ -137,12 +178,20 @@ public class DaoGenerator {
     }
 
     private void generate(Template template, File outDirFile, String javaPackage, String javaClassName, Schema schema,
-            Entity entity) throws Exception {
-        generate(template, outDirFile, javaPackage, javaClassName, schema, entity, null);
+                          Entity entity) throws Exception {
+        generate(template, outDirFile, javaPackage, javaClassName, schema, entity, null, "java");
+    }
+    private void generate(Template template, File outDirFile, String javaPackage, String javaClassName, Schema schema,
+            Entity entity, String fileSuffix) throws Exception {
+        generate(template, outDirFile, javaPackage, javaClassName, schema, entity, null, fileSuffix);
+    }
+    private void generate(Template template, File outDirFile, String javaPackage, String javaClassName, Schema schema,
+                          Entity entity, Map<String, Object> additionalObjectsForTemplate) throws Exception {
+        generate(template, outDirFile, javaPackage, javaClassName, schema, entity, additionalObjectsForTemplate, "java");
     }
 
     private void generate(Template template, File outDirFile, String javaPackage, String javaClassName, Schema schema,
-            Entity entity, Map<String, Object> additionalObjectsForTemplate) throws Exception {
+            Entity entity, Map<String, Object> additionalObjectsForTemplate, String fileSuffix) throws Exception {
         Map<String, Object> root = new HashMap<String, Object>();
         root.put("schema", schema);
         root.put("entity", entity);
@@ -150,7 +199,11 @@ public class DaoGenerator {
             root.putAll(additionalObjectsForTemplate);
         }
         try {
-            File file = toJavaFilename(outDirFile, javaPackage, javaClassName);
+            File file = toJavaFilename(outDirFile, javaPackage, javaClassName, fileSuffix);
+            if (file.exists() && fileSuffix.equals("xml")) {
+                //Don't overwrite the resources generated as they contain no data
+                return;
+            }
             file.getParentFile().mkdirs();
 
             if (entity != null && entity.getHasKeepSections()) {
@@ -194,16 +247,21 @@ public class DaoGenerator {
                 if (matcher.matches()) {
                     root.put("keepMethods", matcher.group(1));
                 }
+
+                matcher = patternKeepBody.matcher(contents);
+                if (matcher.matches()) {
+                    root.put("keepBody", matcher.group(1));
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
 
-    protected File toJavaFilename(File outDirFile, String javaPackage, String javaClassName) {
+    protected File toJavaFilename(File outDirFile, String javaPackage, String javaClassName, String fileSuffix) {
         String packageSubPath = javaPackage.replace('.', '/');
         File packagePath = new File(outDirFile, packageSubPath);
-        File file = new File(packagePath, javaClassName + ".java");
+        File file = new File(packagePath, javaClassName + "." + fileSuffix);
         return file;
     }
 

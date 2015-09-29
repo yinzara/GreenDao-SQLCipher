@@ -27,6 +27,7 @@ public class ToOne {
     private final boolean[] resolvedKeyUseEquals;
     private String name;
     private final boolean useFkProperty;
+    private boolean parceled;
 
     public ToOne(Schema schema, Entity sourceEntity, Entity targetEntity, Property[] fkProperties, boolean useFkProperty) {
         this.schema = schema;
@@ -72,6 +73,14 @@ public class ToOne {
 
     public boolean isUseFkProperty() {
         return useFkProperty;
+    }
+
+    public void enableParceled() {
+        this.parceled = true;
+    }
+
+    public boolean isParceled() {
+        return parceled;
     }
 
     void init2ndPass() {

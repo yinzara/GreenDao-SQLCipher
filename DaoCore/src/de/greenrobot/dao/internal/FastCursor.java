@@ -183,6 +183,7 @@ final public class FastCursor implements Cursor {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public boolean isNull(int columnIndex) {
         return window.isNull(position, columnIndex);
     }

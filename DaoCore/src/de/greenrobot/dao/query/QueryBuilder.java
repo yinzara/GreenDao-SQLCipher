@@ -15,6 +15,8 @@
  */
 package de.greenrobot.dao.query;
 
+import net.sqlcipher.Cursor;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
@@ -347,6 +349,74 @@ public class QueryBuilder<T> {
         }
 
         return CountQuery.create(dao, sql, values.toArray());
+    }
+
+    public <J> ProjectionQuery<T,J> buildProjection(Property<J> idProperty) {
+        return buildProjection(0, Integer.MAX_VALUE, idProperty);
+    }
+
+    public <J> ProjectionQuery<T,J> buildProjection(int firstResult, int maxResults, Property<J> idProperty) {
+        final StringBuilder builder = new StringBuilder()
+                .append("SELECT ")
+                .append('"').append(idProperty.columnName).append('"')
+                .append(" FROM ")
+                .append('"').append(dao.getTablename()).append('"');
+        appendWhereClause(builder, null);
+
+        final String sql = builder.toString();
+
+        if (LOG_SQL) {
+            DaoLog.d("Built SQL for count query: " + sql);
+        }
+        if (LOG_VALUES) {
+            DaoLog.d("Values for count query: " + values);
+        }
+        return ProjectionQuery.create(dao, sql, values.toArray(), idProperty.type, firstResult, maxResults);
+    }
+
+    public ProjectionQuery<T,Object[]> buildProjection(Property<?> property1, Property<?> ... properties) {
+        return buildProjection(0, Integer.MAX_VALUE, property1, properties);
+    }
+
+    public ProjectionQuery<T,Object[]> buildProjection(int firstResult, int maxResults, Property<?> property1, Property<?> ... properties) {
+        final StringBuilder builder = new StringBuilder()
+                .append("SELECT ")
+                .append('"').append(property1.columnName).append('"');
+        if (properties != null) {
+            for (int i = 0; i < properties.length; i++) {
+                builder.append(',').append('"').append(properties[i].columnName).append('"');
+            }
+        }
+        builder
+                .append(" FROM ")
+                .append('"').append(dao.getTablename()).append('"');
+        appendWhereClause(builder, null);
+
+        final String sql = builder.toString();
+
+        if (LOG_SQL) {
+            DaoLog.d("Built SQL for count query: " + sql);
+        }
+        if (LOG_VALUES) {
+            DaoLog.d("Values for count query: " + values);
+        }
+        return ProjectionQuery.create(dao, sql, values.toArray(), Object[].class, firstResult, maxResults);
+    }
+
+    public Cursor rawQuery() {
+        return dao.getDatabase().rawQuery(build().getSql(), valuesAsStringArray());
+    }
+
+    private String[] valuesAsStringArray() {
+        if (this.values == null) {
+            return null;
+        }
+        final String[] values = new String[this.values.size()];
+        for (int i = 0;i < values.length;i++) {
+            final Object val = this.values.get(i);
+            values[i] = val != null?val.toString():null;
+        }
+        return values;
     }
 
     private void appendWhereClause(StringBuilder builder, String tablePrefixOrNull) {

@@ -29,19 +29,24 @@ import java.util.Map;
  */
 public class Schema {
     private final int version;
-    private final String defaultJavaPackage;
+    private String defaultJavaPackage;
     private String defaultJavaPackageDao;
     private String defaultJavaPackageTest;
+    private String defaultJavaPackageEvent;
     private final List<Entity> entities;
     private Map<PropertyType, String> propertyToDbType;
     private Map<PropertyType, String> propertyToJavaTypeNotNull;
     private Map<PropertyType, String> propertyToJavaTypeNullable;
     private boolean hasKeepSectionsByDefault;
     private boolean useActiveEntitiesByDefault;
+    private boolean parcelableGenerated;
+    private boolean eventGenerated;
+    private final String appPackage;
 
-    public Schema(int version, String defaultJavaPackage) {
+
+    public Schema(int version, String appPackage) {
         this.version = version;
-        this.defaultJavaPackage = defaultJavaPackage;
+        this.appPackage = appPackage;
         this.entities = new ArrayList<Entity>();
         initTypeMappings();
     }
@@ -53,6 +58,12 @@ public class Schema {
     public void enableActiveEntitiesByDefault() {
         useActiveEntitiesByDefault = true;
     }
+
+    public void enableParcelableGenerated() {
+        parcelableGenerated = true;
+    }
+
+    public void enableEventGenerated() { this.eventGenerated = true; }
 
     private void initTypeMappings() {
         propertyToDbType = new HashMap<PropertyType, String>();
@@ -140,6 +151,8 @@ public class Schema {
         return defaultJavaPackage;
     }
 
+    public void setDefaultJavaPackage(String javaPackage) { this.defaultJavaPackage = javaPackage; }
+
     public String getDefaultJavaPackageDao() {
         return defaultJavaPackageDao;
     }
@@ -156,6 +169,19 @@ public class Schema {
         this.defaultJavaPackageTest = defaultJavaPackageTest;
     }
 
+    public String getDefaultJavaPackageEvent() {
+        return defaultJavaPackageEvent;
+    }
+
+    public void setDefaultJavaPackageEvent(String defaultJavaPackageEvent) {
+        this.defaultJavaPackageEvent = defaultJavaPackageEvent;
+    }
+
+    public String getAppPackage() {
+        return appPackage;
+
+    }
+
     public List<Entity> getEntities() {
         return entities;
     }
@@ -167,6 +193,13 @@ public class Schema {
     public boolean isUseActiveEntitiesByDefault() {
         return useActiveEntitiesByDefault;
     }
+
+
+    public boolean isParcelableGenerated() {
+        return parcelableGenerated;
+    }
+
+    public boolean isEventGenerated() { return eventGenerated; }
 
     void init2ndPass() {
         if (defaultJavaPackageDao == null) {

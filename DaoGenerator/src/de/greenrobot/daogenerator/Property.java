@@ -122,6 +122,7 @@ public class Property {
 
     private boolean unique;
     private boolean notNull;
+    private boolean parceled = true;
 
     /** Initialized in 2nd pass */
     private String constraints;
@@ -191,6 +192,14 @@ public class Property {
 
     public Entity getEntity() {
         return entity;
+    }
+
+    public boolean isParceled() {
+        return parceled;
+    }
+
+    public void disableParceled() {
+        this.parceled = false;
     }
 
     void init2ndPass() {

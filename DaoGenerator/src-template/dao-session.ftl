@@ -83,5 +83,18 @@ public class DaoSession extends AbstractDaoSession {
         return ${entity.classNameDao?uncap_first};
     }
 
-</#list>        
+    public DaoConfig get${entity.classNameDao?cap_first}Config() {
+        return ${entity.classNameDao?uncap_first}Config;
+    }
+
+</#list>
+
+    public DaoConfig getDaoConfig(Class<?> entityClass) {
+
+        <#list schema.entities as entity>if (${entity.className}.class.equals(entityClass)) {
+            return ${entity.classNameDao?uncap_first}Config;
+        } <#if schema.entities?last != entity>else </#if></#list>
+
+        return null;
+    }
 }
